@@ -8,6 +8,9 @@ from .forms import CustomerForm, ProductForm, BillForm, BillItemForm
 from decimal import Decimal, InvalidOperation
 import json
 from django.db.models import Sum, Avg
+from django.utils import timezone
+
+
 
 
 def dashboard(request):
@@ -230,60 +233,63 @@ def get_product_price(request, pk):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
 
-def bill_create_safe(request):
-    
+
+def bill_create(request):
     if request.method == 'POST':
         try:
             customer_id = request.POST.get('customer')
-            products_data = json.loads(request.POST.get('products_data', '[]'))
+            products_data_raw = request.POST.get('products_data', '[]')
+            products_data = json.loads(products_data_raw)
+
+            if not customer_id:
+                raise ValueError('Please select a customer.')
+
+            if not products_data:
+                raise ValueError('Please add at least one product.')
+
+            customer = get_object_or_404(Customer, pk=customer_id)
+
             
-            if customer_id and products_data:
-                customer = get_object_or_404(Customer, pk=customer_id)
-                
-               
+            today = timezone.localdate()
+
+            
+            bill = Bill.objects.filter(customer=customer).first()
+
+            if not bill:
                 bill = Bill.objects.create(customer=customer)
-                
-                subtotal = 0
-                
-               
-                for item_data in products_data:
-                    product = get_object_or_404(Product, pk=item_data['product_id'])
-                    quantity = int(item_data['quantity'])
-                    
-                    
-                    price_float = float(product.price)
-                    total_float = price_float * quantity
-                    
-                 
-                    price_decimal = Decimal(f'{price_float:.2f}')
-                    total_decimal = Decimal(f'{total_float:.2f}')
-                    
-                    BillItem.objects.create(
-                        bill=bill,
-                        product=product,
-                        quantity=quantity,
-                        price=price_decimal,
-                        total=total_decimal
-                    )
-                    
-                    subtotal += total_float
-                
-               
-                tax_amount = subtotal * 0.13
-                grand_total = subtotal + tax_amount
-                
-                
-                bill.subtotal = Decimal(f'{subtotal:.2f}')
-                bill.tax_amount = Decimal(f'{tax_amount:.2f}')
-                bill.grand_total = Decimal(f'{grand_total:.2f}')
-                bill.save()
-                
-                messages.success(request, f'Bill {bill.bill_number} created successfully!')
-                return redirect('bill_view', pk=bill.pk)
-                
+
+         
+            for item_data in products_data:
+                product_id = item_data.get('product_id')
+                product = get_object_or_404(Product, pk=product_id)
+
+                quantity = int(item_data.get('quantity', 1))
+                if quantity <= 0:
+                    raise ValueError('Quantity must be positive')
+
+                price = product.price
+                total = price * quantity
+
+                bill_item, created = BillItem.objects.get_or_create(
+                    bill=bill,
+                    product=product,
+                    defaults={'quantity': quantity, 'price': price, 'total': total}
+                )
+
+                if not created:
+                    # If exists, update quantity and total
+                    bill_item.quantity += quantity
+                    bill_item.total = bill_item.price * bill_item.quantity
+                    bill_item.save()
+
+            bill.calculate_totals()
+
+            messages.success(request, f'Bill {bill.bill_number} updated successfully!')
+            return redirect('bill_view', pk=bill.pk)
+
         except Exception as e:
-            messages.error(request, f'Error creating bill: {str(e)}')
-    
+            messages.error(request, str(e))
+
     customers = Customer.objects.all()
     products = Product.objects.all()
     return render(request, 'billing/bills/create.html', {
