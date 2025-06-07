@@ -111,102 +111,7 @@ def bill_list(request):
         'average': average
     })
 
-def bill_create(request):
-    if request.method == 'POST':
-        try:
-            customer_id = request.POST.get('customer')
-            products_data_raw = request.POST.get('products_data', '[]')
-            
-            print(f"Raw products data: {products_data_raw}")  # Debug
-            
-            
-            try:
-                products_data = json.loads(products_data_raw)
-            except json.JSONDecodeError as e:
-                messages.error(request, f'Invalid product data format: {str(e)}')
-                raise
-            
-            print(f"Parsed products data: {products_data}")  # Debug
-            
-            if not customer_id:
-                messages.error(request, 'Please select a customer.')
-                raise ValueError('No customer selected')
-                
-            if not products_data:
-                messages.error(request, 'Please add at least one product.')
-                raise ValueError('No products added')
-            
-           
-            customer = get_object_or_404(Customer, pk=customer_id)
-            
-            
-            bill = Bill.objects.create(customer=customer)
-            print(f"Created bill: {bill.bill_number}")  
-            
-            
-            subtotal = Decimal('0.00')
-            
-            for item_data in products_data:
-                print(f"Processing item: {item_data}") 
-                
-                
-                product_id = item_data.get('product_id')
-                if not product_id:
-                    raise ValueError('Product ID missing')
-                    
-                product = get_object_or_404(Product, pk=product_id)
-                
-            
-                try:
-                    quantity = int(item_data.get('quantity', 1))
-                    if quantity <= 0:
-                        raise ValueError('Quantity must be positive')
-                except (ValueError, TypeError):
-                    raise ValueError(f'Invalid quantity: {item_data.get("quantity")}')
-                
-                
-                price = Decimal(str(product.price))
-                total = price * Decimal(str(quantity))
-                
-                print(f"Product: {product.name}, Price: {price}, Quantity: {quantity}, Total: {total}")  # Debug
-                
-                bill_item = BillItem.objects.create(
-                    bill=bill,
-                    product=product,
-                    quantity=quantity,
-                    price=price,
-                    total=total
-                )
-                
-                subtotal += total
-            
-           
-            tax_rate = Decimal('13.00')
-            tax_amount = (subtotal * tax_rate) / Decimal('100')
-            grand_total = subtotal + tax_amount
-            
-          
-            bill.subtotal = subtotal
-            bill.tax_amount = tax_amount
-            bill.grand_total = grand_total
-            bill.save()
-            
-            print(f"Final totals - Subtotal: {subtotal}, Tax: {tax_amount}, Grand Total: {grand_total}")  
-            
-            messages.success(request, f'Bill {bill.bill_number} created successfully!')
-            return redirect('bill_view', pk=bill.pk)
-            
-        except Exception as e:
-            print(f"Error creating bill: {str(e)}")  
-            messages.error(request, f'Error creating bill: {str(e)}')
-    
-   
-    customers = Customer.objects.all()
-    products = Product.objects.all()
-    return render(request, 'billing/bills/create.html', {
-        'customers': customers,
-        'products': products
-    })
+
 
 def bill_view(request, pk):
     bill = get_object_or_404(Bill, pk=pk)
@@ -277,7 +182,7 @@ def bill_create(request):
                 )
 
                 if not created:
-                    # If exists, update quantity and total
+                   
                     bill_item.quantity += quantity
                     bill_item.total = bill_item.price * bill_item.quantity
                     bill_item.save()
