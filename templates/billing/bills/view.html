@@ -1,0 +1,222 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Bill {{ bill.bill_number }} - Billing System{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4 no-print">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'bill_list' %}">Bills</a></li>
+        <li class="breadcrumb-item active">{{ bill.bill_number }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <div>
+        <h1 class="h3 mb-0">
+            <i class="fas fa-file-invoice text-primary me-2"></i>Bill {{ bill.bill_number }}
+        </h1>
+        <p class="text-muted mb-0">Created on {{ bill.bill_date|date:"F d, Y \a\t g:i A" }}</p>
+    </div>
+    <div class="btn-group">
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-2"></i>Print
+        </button>
+        <a href="{% url 'bill_print' bill.pk %}" target="_blank" class="btn btn-outline-primary">
+            <i class="fas fa-external-link-alt me-2"></i>Print View
+        </a>
+        <button onclick="generatePDF()" class="btn btn-success">
+            <i class="fas fa-file-pdf me-2"></i>Export PDF
+        </button>
+    </div>
+</div>
+
+<div class="card" id="bill-content">
+    <div class="card-body">
+        <!-- Bill Header -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h2 class="h4 text-primary mb-3">
+                    <i class="fas fa-receipt me-2"></i>INVOICE
+                </h2>
+                <div class="mb-2">
+                    <strong>Bill Number:</strong> <span class="text-primary">{{ bill.bill_number }}</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Date:</strong> {{ bill.bill_date|date:"F d, Y" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Time:</strong> {{ bill.bill_date|date:"g:i A" }}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="bg-light p-4 rounded">
+                    <h5 class="mb-3">
+                        <i class="fas fa-user me-2"></i>Bill To:
+                    </h5>
+                    <div class="mb-2"><strong>{{ bill.customer.name }}</strong></div>
+                    {% if bill.customer.email %}
+                    <div class="mb-1">
+                        <i class="fas fa-envelope me-1"></i>{{ bill.customer.email }}
+                    </div>
+                    {% endif %}
+                    {% if bill.customer.phone %}
+                    <div class="mb-1">
+                        <i class="fas fa-phone me-1"></i>{{ bill.customer.phone }}
+                    </div>
+                    {% endif %}
+                    {% if bill.customer.address %}
+                    <div class="mt-2">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        {{ bill.customer.address|linebreaks }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Items -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered">
+                <thead class="table-primary">
+                    <tr>
+                        <th width="50">#</th>
+                        <th>Product</th>
+                        <th class="text-center" width="100">Quantity</th>
+                        <th class="text-end" width="120">Unit Price</th>
+                        <th class="text-end" width="120">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in bill_items %}
+                    <tr>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td>
+                            <strong>{{ item.product.name }}</strong>
+                            {% if item.product.description %}
+                            <br><small class="text-muted">{{ item.product.description|truncatechars:100 }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-end">${{ item.price|floatformat:2 }}</td>
+                        <td class="text-end"><strong>${{ item.total|floatformat:2 }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bill Totals -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body bg-light">
+                        <h6 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>Bill Summary
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="h6 mb-0 text-primary">{{ bill_items.count }}</div>
+                                <small class="text-muted">Items</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="h6 mb-0 text-success">{{ bill.tax_rate }}%</div>
+                                <small class="text-muted">Tax Rate</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="h6 mb-0 text-info">{{ bill.customer.name|first|upper }}</div>
+                                <small class="text-muted">Customer</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-end"><strong>Subtotal:</strong></td>
+                            <td class="text-end" width="120">${{ bill.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-end"><strong>Tax ({{ bill.tax_rate }}%):</strong></td>
+                            <td class="text-end">${{ bill.tax_amount|floatformat:2 }}</td>
+                        </tr>
+                        <tr class="table-primary">
+                            <td class="text-end"><strong>Grand Total:</strong></td>
+                            <td class="text-end"><strong class="fs-5">${{ bill.grand_total|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-5 pt-4 border-top">
+            <p class="text-muted mb-1">
+                <i class="fas fa-heart text-danger me-1"></i>
+                Thank you for your business!
+            </p>
+            <p class="text-muted small mb-0">
+                This is a computer-generated invoice and does not require a signature.
+            </p>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Bill Actions Modal -->
+<div class="modal fade" id="billActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bill Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action" onclick="window.print()">
+                        <i class="fas fa-print me-2"></i>Print Bill
+                    </a>
+                    <a href="{% url 'bill_print' bill.pk %}" target="_blank"
+                        class="list-group-item list-group-item-action">
+                        <i class="fas fa-external-link-alt me-2"></i>Open Print View
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="generatePDF()">
+                        <i class="fas fa-file-pdf me-2"></i>Download PDF
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="sendByEmail()">
+                        <i class="fas fa-envelope me-2"></i>Send by Email
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="duplicateBill()">
+                        <i class="fas fa-copy me-2"></i>Duplicate Bill
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    function generatePDF() {
+        const element = document.getElementById('bill-content');
+        const options = {
+            margin: 1,
+            filename: 'bill-{{ bill.bill_number }}.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(options).from(element).save();
+    }
+
+
+
+</script>
+{% endblock %}

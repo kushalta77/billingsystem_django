@@ -1,0 +1,454 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Create Bill - Billing System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-row {
+        background: #f8fafc;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        padding: 15px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+
+    .product-row:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    }
+
+    .product-total {
+        font-weight: 600;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+    }
+
+    #bill-summary {
+        position: sticky;
+        top: 20px;
+    }
+
+    .summary-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-item:last-child {
+        border-bottom: none;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'bill_list' %}">Bills</a></li>
+        <li class="breadcrumb-item active">Create Bill</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-plus-circle text-primary me-2"></i>Create New Bill
+        </h1>
+        <p class="text-muted">Generate a new bill for your customer</p>
+    </div>
+</div>
+
+<form method="post" id="bill-form">
+    {% csrf_token %}
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <!-- Customer Selection -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Customer Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="customer" class="form-label">Select Customer *</label>
+                            <select name="customer" id="customer" class="form-select" required>
+                                <option value="">Choose a customer...</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.pk }}" data-name="{{ customer.name }}"
+                                    data-email="{{ customer.email|default:'' }}"
+                                    data-phone="{{ customer.phone|default:'' }}"
+                                    data-address="{{ customer.address|default:'' }}">
+                                    {{ customer.name }}{% if customer.email %} ({{ customer.email }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <a href="{% url 'customer_add' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-plus me-1"></i>Add New Customer
+                            </a>
+                        </div>
+                    </div>
+                    <div id="customer-info" class="mt-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">Selected Customer:</h6>
+                            <div id="customer-details"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Section -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-box me-2"></i>Products
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-primary" id="add-product-btn">
+                        <i class="fas fa-plus me-1"></i>Add Product
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="products-container">
+                        <!-- Products will be added here dynamically -->
+                    </div>
+                    <div id="no-products" class="text-center py-4 text-muted">
+                        <i class="fas fa-box fa-3x mb-3"></i>
+                        <h5>No products added yet</h5>
+                        <p>Click "Add Product" to start adding items to this bill</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Summary Sidebar -->
+        <div class="col-lg-4">
+            <div id="bill-summary" class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Bill Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="summary-item d-flex justify-content-between">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">$0.00</span>
+                    </div>
+                    <div class="summary-item d-flex justify-content-between">
+                        <span>Tax (13%):</span>
+                        <span id="tax">$0.00</span>
+                    </div>
+                    <div class="summary-item d-flex justify-content-between text-primary">
+                        <span><strong>Grand Total:</strong></span>
+                        <span id="grand-total"><strong>$0.00</strong></span>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="create-bill" disabled>
+                            <i class="fas fa-save me-2"></i>Create Bill
+                        </button>
+                        <a href="{% url 'bill_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                    </div>
+
+                    <div class="mt-3 pt-3 border-top">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Tax rate is automatically calculated at 13% VAT
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" name="products_data" id="products-data">
+</form>
+
+<!-- Hidden data for JavaScript -->
+<script id="products-data-script" type="application/json">
+[
+    {% for product in products %}
+    {
+        "id": {{ product.pk }},
+        "name": "{{ product.name|escapejs }}",
+        "price": "{{ product.price }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let productCounter = 0;
+    let productsData = [];
+    let productsDatabase = [];
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, initializing bill creation...');
+
+        // Load products data from hidden script tag
+        try {
+            const productsScript = document.getElementById('products-data-script');
+            if (productsScript) {
+                productsDatabase = JSON.parse(productsScript.textContent);
+                console.log('Products loaded:', productsDatabase);
+            } else {
+                console.error('Products data script not found');
+                return;
+            }
+        } catch (error) {
+            console.error('Error parsing products data:', error);
+            return;
+        }
+
+        // Set up event listeners
+        setupEventListeners();
+
+        // Add first product row
+        addProductRow();
+    });
+
+    function setupEventListeners() {
+        // Add Product button
+        const addProductBtn = document.getElementById('add-product-btn');
+        if (addProductBtn) {
+            addProductBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                console.log('Add product button clicked');
+                addProductRow();
+            });
+        } else {
+            console.error('Add product button not found');
+        }
+
+        // Customer selection
+        const customerSelect = document.getElementById('customer');
+        if (customerSelect) {
+            customerSelect.addEventListener('change', handleCustomerChange);
+        }
+
+        // Form submission
+        const billForm = document.getElementById('bill-form');
+        if (billForm) {
+            billForm.addEventListener('submit', handleFormSubmit);
+        }
+    }
+
+    function addProductRow() {
+        console.log('Adding product row...');
+        productCounter++;
+
+        // Create product options HTML
+        let productOptionsHtml = '<option value="">Select a product...</option>';
+        productsDatabase.forEach(function (product) {
+            productOptionsHtml += `<option value="${product.id}" data-price="${product.price}">${product.name} - $${parseFloat(product.price).toFixed(2)}</option>`;
+        });
+
+        // Create product row
+        const productRow = document.createElement('div');
+        productRow.className = 'product-row';
+        productRow.setAttribute('data-row', productCounter);
+        productRow.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label">Product</label>
+                    <select class="form-select product-select" data-row="${productCounter}" required>
+                        ${productOptionsHtml}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-control quantity-input" data-row="${productCounter}" min="1" value="1" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Total</label>
+                    <div class="form-control-plaintext product-total" data-row="${productCounter}">$0.00</div>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger btn-sm remove-product w-100" data-row="${productCounter}" title="Remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Add to container
+        const container = document.getElementById('products-container');
+        if (container) {
+            container.appendChild(productRow);
+            console.log('Product row added successfully');
+        } else {
+            console.error('Products container not found');
+            return;
+        }
+
+        // Hide no products message
+        const noProducts = document.getElementById('no-products');
+        if (noProducts) {
+            noProducts.style.display = 'none';
+        }
+
+        // Add event listeners to new row
+        const productSelect = productRow.querySelector('.product-select');
+        const quantityInput = productRow.querySelector('.quantity-input');
+        const removeButton = productRow.querySelector('.remove-product');
+
+        if (productSelect) {
+            productSelect.addEventListener('change', updateProductTotal);
+        }
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateProductTotal);
+        }
+        if (removeButton) {
+            removeButton.addEventListener('click', removeProductRow);
+        }
+
+        updateBillSummary();
+    }
+
+    function removeProductRow(e) {
+        console.log('Removing product row...');
+        const row = e.target.closest('.product-row');
+        const rowId = row.getAttribute('data-row');
+
+        // Remove from productsData array
+        productsData = productsData.filter(p => p.row_id != rowId);
+
+        // Remove from DOM
+        row.remove();
+
+        // Show no products message if no rows left
+        if (document.querySelectorAll('.product-row').length === 0) {
+            const noProducts = document.getElementById('no-products');
+            if (noProducts) {
+                noProducts.style.display = 'block';
+            }
+        }
+
+        updateBillSummary();
+    }
+
+    function updateProductTotal(e) {
+        const row = e.target.closest('.product-row');
+        const rowId = row.getAttribute('data-row');
+        const productSelect = row.querySelector('.product-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const totalElement = row.querySelector('.product-total');
+
+        const selectedOption = productSelect.selectedOptions[0];
+        const price = selectedOption && selectedOption.value ? parseFloat(selectedOption.getAttribute('data-price')) : 0;
+        const quantity = parseInt(quantityInput.value) || 0;
+        const total = price * quantity;
+
+        // Update display
+        totalElement.textContent = `$${total.toFixed(2)}`;
+
+        // Update data array
+        const existingIndex = productsData.findIndex(p => p.row_id == rowId);
+        if (selectedOption && selectedOption.value && quantity > 0) {
+            const productData = {
+                row_id: rowId,
+                product_id: selectedOption.value,
+                quantity: quantity,
+                price: price,
+                total: total
+            };
+
+            if (existingIndex >= 0) {
+                productsData[existingIndex] = productData;
+            } else {
+                productsData.push(productData);
+            }
+        } else if (existingIndex >= 0) {
+            productsData.splice(existingIndex, 1);
+        }
+
+        updateBillSummary();
+    }
+
+    function updateBillSummary() {
+        const subtotal = productsData.reduce((sum, product) => sum + (product.total || 0), 0);
+        const tax = subtotal * 0.13;
+        const grandTotal = subtotal + tax;
+
+        // Update display
+        const subtotalEl = document.getElementById('subtotal');
+        const taxEl = document.getElementById('tax');
+        const grandTotalEl = document.getElementById('grand-total');
+
+        if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+        if (taxEl) taxEl.textContent = `$${tax.toFixed(2)}`;
+        if (grandTotalEl) grandTotalEl.innerHTML = `<strong>$${grandTotal.toFixed(2)}</strong>`;
+
+        // Update create bill button state
+        const customerSelected = document.getElementById('customer').value;
+        const hasProducts = productsData.length > 0;
+        const createBillBtn = document.getElementById('create-bill');
+        if (createBillBtn) {
+            createBillBtn.disabled = !(customerSelected && hasProducts);
+        }
+
+        // Update hidden input
+        const productsDataInput = document.getElementById('products-data');
+        if (productsDataInput) {
+            productsDataInput.value = JSON.stringify(productsData);
+        }
+
+        console.log('Bill summary updated:', { subtotal, tax, grandTotal, productsData });
+    }
+
+    function handleCustomerChange() {
+        const customerSelect = document.getElementById('customer');
+        const selectedOption = customerSelect.selectedOptions[0];
+        const customerInfo = document.getElementById('customer-info');
+        const customerDetails = document.getElementById('customer-details');
+
+        if (selectedOption && selectedOption.value) {
+            const name = selectedOption.getAttribute('data-name');
+            const email = selectedOption.getAttribute('data-email');
+            const phone = selectedOption.getAttribute('data-phone');
+            const address = selectedOption.getAttribute('data-address');
+
+            let detailsHtml = `<strong>${name}</strong><br>`;
+            if (email) detailsHtml += `Email: ${email}<br>`;
+            if (phone) detailsHtml += `Phone: ${phone}<br>`;
+            if (address) detailsHtml += `Address: ${address}`;
+
+            customerDetails.innerHTML = detailsHtml;
+            customerInfo.style.display = 'block';
+        } else {
+            customerInfo.style.display = 'none';
+        }
+
+        updateBillSummary();
+    }
+
+    function handleFormSubmit(e) {
+        console.log('Form submission attempted');
+
+        if (productsData.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one product to the bill.');
+            return false;
+        }
+
+        const customerSelect = document.getElementById('customer');
+        if (!customerSelect.value) {
+            e.preventDefault();
+            alert('Please select a customer.');
+            return false;
+        }
+
+        console.log('Form validation passed, submitting...');
+        return true;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Bills - Billing System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">
+            <i class="fas fa-file-invoice text-primary me-2"></i>Bills & Invoices
+        </h1>
+        <p class="text-muted mb-0">Manage all your billing records</p>
+    </div>
+    <a href="{% url 'bill_create' %}" class="btn btn-primary btn-lg">
+        <i class="fas fa-plus me-2"></i>Create New Bill
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Total Bills</h6>
+                        <h3 class="mb-0">{{ bills.count }}</h3>
+                    </div>
+                    <div class="fs-1 opacity-75">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Total Revenue</h6>
+                        <h3 class="mb-0">${{total }}</h3>
+                    </div>
+                    <div class="fs-1 opacity-75">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">This Month</h6>
+                        <h3 class="mb-0">{{ bills|length }}</h3>
+                    </div>
+                    <div class="fs-1 opacity-75">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Avg. Amount</h6>
+                        <h3 class="mb-0">${{average}}</h3>
+                    </div>
+                    <div class="fs-1 opacity-75">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="searchBills" placeholder="Search bills, customers...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filterStatus">
+                    <option value="">All Bills</option>
+                    <option value="recent">Recent (Last 30 days)</option>
+                    <option value="older">Older</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="sortBills">
+                    <option value="date-desc">Newest First</option>
+                    <option value="date-asc">Oldest First</option>
+                    <option value="amount-desc">Highest Amount</option>
+                    <option value="amount-asc">Lowest Amount</option>
+                    <option value="customer">Customer Name</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-primary w-100">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if bills %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="billsTable">
+                <thead>
+                    <tr>
+                        <th>Bill Number</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Items</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th width="150">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-primary">{{ bill.bill_number }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-info rounded-circle text-white d-flex align-items-center justify-content-center me-2"
+                                    style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                    {{ bill.customer.name|first|upper }}
+                                </div>
+                                <div>
+                                    <div>{{ bill.customer.name }}</div>
+                                    {% if bill.customer.email %}
+                                    <small class="text-muted">{{ bill.customer.email }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div>{{ bill.bill_date|date:"M d, Y" }}</div>
+                            <small class="text-muted">{{ bill.bill_date|date:"g:i A" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ bill.billitem_set.count }} items</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-success">${{ bill.grand_total|floatformat:2 }}</div>
+                            <small class="text-muted">Tax: ${{ bill.tax_amount|floatformat:2 }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">Completed</span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'bill_view' bill.pk %}" class="btn btn-sm btn-outline-primary"
+                                    title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'bill_print' bill.pk %}" target="_blank"
+                                    class="btn btn-sm btn-outline-success" title="Print">
+                                    <i class="fas fa-print"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-info" title="Export PDF"
+                                    onclick="window.open('{% url 'bill_view' bill.pk %}', '_blank')">
+                                    <i class="fas fa-file-pdf"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-file-invoice fa-4x text-muted"></i>
+            </div>
+            <h5 class="text-muted mb-3">No bills found</h5>
+            <p class="text-muted mb-4">Create your first bill to get started with invoicing.</p>
+            <a href="{% url 'bill_create' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i>Create Your First Bill
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchBills');
+        const table = document.getElementById('billsTable');
+
+        if (searchInput && table) {
+            searchInput.addEventListener('keyup', function () {
+                const filter = this.value.toLowerCase();
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+                for (let i = 0; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName('td');
+                    let found = false;
+
+                    for (let j = 0; j < cells.length; j++) {
+                        if (cells[j].textContent.toLowerCase().includes(filter)) {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    rows[i].style.display = found ? '' : 'none';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Dashboard - Billing System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-tachometer-alt text-primary me-2"></i>Dashboard
+        </h1>
+        <p class="text-muted">Welcome to your billing system dashboard</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon bg-primary text-white me-3">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-1">{{ total_customers }}</h5>
+                    <p class="card-text text-muted small mb-0">Total Customers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon bg-success text-white me-3">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-1">{{ total_products }}</h5>
+                    <p class="card-text text-muted small mb-0">Total Products</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon bg-warning text-white me-3">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-1">{{ total_bills }}</h5>
+                    <p class="card-text text-muted small mb-0">Total Bills</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon bg-info text-white me-3">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <div>
+                    <a href="{% url 'bill_create' %}" class="btn btn-primary btn-sm">
+                        Create Bill
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>Recent Bills
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_bills %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Bill Number</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bill in recent_bills %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">{{ bill.bill_number }}</span>
+                                </td>
+                                <td>{{ bill.customer.name }}</td>
+                                <td>{{ bill.bill_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <strong>${{ bill.grand_total|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    <a href="{% url 'bill_view' bill.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No bills created yet</p>
+                    <a href="{% url 'bill_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Your First Bill
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'bill_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create New Bill
+                    </a>
+                    <a href="{% url 'customer_add' %}" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Add Customer
+                    </a>
+                    <a href="{% url 'product_add' %}" class="btn btn-info">
+                        <i class="fas fa-box me-2"></i>Add Product
+                    </a>
+                    <a href="{% url 'bill_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>View All Bills
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

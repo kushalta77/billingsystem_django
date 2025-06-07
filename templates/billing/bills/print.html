@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill {{ bill.bill_number }} - Print</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            @page {
+                margin: 0.5in;
+                size: letter;
+            }
+
+            .table {
+                page-break-inside: avoid;
+                font-size: 11px;
+            }
+
+            .invoice-header {
+                page-break-after: avoid;
+            }
+
+            .invoice-title {
+                font-size: 2rem !important;
+            }
+
+            .watermark::before {
+                display: none;
+            }
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: white;
+            color: #333;
+            line-height: 1.4;
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 15px;
+        }
+
+        .invoice-header {
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 25px;
+            margin-bottom: 35px;
+            page-break-after: avoid;
+        }
+
+        .invoice-title {
+            color: #2563eb;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .company-header {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .company-logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 15px auto;
+        }
+
+        .bill-to-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .table-invoice {
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .table-invoice thead {
+            background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+            color: white;
+        }
+
+        .table-invoice th {
+            border-color: #2563eb;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 8px;
+            font-size: 12px;
+        }
+
+        .table-invoice td {
+            border-color: #e2e8f0;
+            padding: 10px 8px;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        .table-invoice tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .table-invoice tbody tr:hover {
+            background-color: #e2e8f0;
+        }
+
+        .totals-section {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .grand-total-row {
+            background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .grand-total-row td {
+            padding: 15px 12px;
+            border: none;
+        }
+
+        .watermark {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .watermark::before {
+            content: 'INVOICE';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 6rem;
+            color: rgba(37, 99, 235, 0.05);
+            font-weight: 900;
+            z-index: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        .bill-footer {
+            border-top: 3px solid #e2e8f0;
+            margin-top: 40px;
+            padding-top: 25px;
+            text-align: center;
+            page-break-inside: avoid;
+            clear: both;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+        }
+
+        .status-paid {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .info-box {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .info-box h6 {
+            color: #2563eb;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .payment-terms {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .contact-info {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .item-description {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .amount-highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .invoice-title {
+                font-size: 1.8rem;
+                text-align: center;
+            }
+
+            .company-header {
+                padding: 15px;
+                text-align: center;
+            }
+
+            .company-header .row {
+                text-align: center;
+            }
+
+            .company-header .col-md-3 {
+                margin-top: 15px;
+            }
+
+            .bill-to-section {
+                padding: 15px;
+            }
+
+            .table-invoice {
+                font-size: 12px;
+            }
+
+            .table-invoice th,
+            .table-invoice td {
+                padding: 8px 4px;
+                font-size: 11px;
+            }
+
+            .invoice-header .row {
+                flex-direction: column;
+            }
+
+            .info-box {
+                margin: 5px 0;
+                padding: 10px;
+            }
+
+            .payment-terms,
+            .contact-info {
+                margin: 15px 0;
+                padding: 12px;
+            }
+
+            .totals-section {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .bill-footer {
+                margin-top: 30px;
+                padding-top: 20px;
+            }
+
+            .watermark::before {
+                font-size: 4rem;
+            }
+
+            /* Stack the totals and payment info on mobile */
+            .row .col-md-7,
+            .row .col-md-5 {
+                margin-bottom: 20px;
+            }
+
+            /* Make buttons stack vertically on mobile */
+            .btn-group {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn-group .btn {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding: 5px;
+            }
+
+            .invoice-title {
+                font-size: 1.5rem;
+            }
+
+            .company-header {
+                padding: 10px;
+            }
+
+            .bill-to-section {
+                padding: 10px;
+            }
+
+            .table-invoice th,
+            .table-invoice td {
+                padding: 6px 2px;
+                font-size: 10px;
+            }
+
+            .totals-section {
+                padding: 10px;
+            }
+
+            .info-box {
+                padding: 8px;
+            }
+
+            .payment-terms,
+            .contact-info {
+                padding: 10px;
+            }
+
+            .watermark::before {
+                font-size: 3rem;
+            }
+
+            /* Hide non-essential columns on very small screens */
+            .table-invoice .d-none-xs {
+                display: none;
+            }
+        }
+
+        /* Ensure all content is visible */
+        .min-height-content {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .flex-grow-content {
+            flex-grow: 1;
+        }
+
+        /* Fixed button positioning for mobile */
+        .no-print {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            z-index: 1000;
+        }
+
+        /* Responsive table handling */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Better spacing for mobile */
+        @media (max-width: 768px) {
+            .mb-4 {
+                margin-bottom: 1.5rem !important;
+            }
+
+            .mt-4 {
+                margin-top: 1.5rem !important;
+            }
+
+            .py-5 {
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="watermark min-height-content">
+    <div class="container mt-4 content-wrapper flex-grow-content">
+        <!-- Company Header -->
+        <div class="company-header">
+            <div class="row align-items-center">
+                <div class="col-md-2 col-12 text-center">
+                    <div class="company-logo">
+                        <i class="fas fa-building"></i>
+                    </div>
+                </div>
+                <div class="col-md-7 col-12 text-center text-md-start">
+                    <h2 class="mb-1 text-primary fw-bold">Your Company Name</h2>
+                    <p class="mb-1 text-muted">Professional Billing Solutions</p>
+                    <div class="small text-muted">
+                        <i class="fas fa-map-marker-alt me-1"></i>123 Business Street, Suite 100<br>
+                        <span class="ms-3 d-block d-md-inline">Business City, State 12345, Country</span>
+                    </div>
+                </div>
+                <div class="col-md-3 col-12 text-center text-md-end mt-3 mt-md-0">
+                    <div class="small">
+                        <div><i class="fas fa-phone me-1 text-primary"></i><strong>(555) 123-4567</strong></div>
+                        <div><i class="fas fa-envelope me-1 text-primary"></i>info@yourcompany.com</div>
+                        <div><i class="fas fa-globe me-1 text-primary"></i>www.yourcompany.com</div>
+                        <div class="mt-2">
+                            <strong>Tax ID:</strong> 12-3456789
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Header -->
+        <div class="invoice-header">
+            <div class="row align-items-center">
+                <div class="col-md-7 col-12">
+                    <div class="invoice-title text-center text-md-start">INVOICE</div>
+                    <div class="mt-3">
+                        <div class="row g-2">
+                            <div class="col-sm-5 col-12">
+                                <div class="info-box">
+                                    <h6><i class="fas fa-hashtag me-1"></i>Invoice Number</h6>
+                                    <div class="h5 text-primary fw-bold mb-0">{{ bill.bill_number }}</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-3 col-6">
+                                <div class="info-box">
+                                    <h6><i class="fas fa-calendar me-1"></i>Date</h6>
+                                    <div class="fw-bold">{{ bill.bill_date|date:"M d, Y" }}</div>
+                                    <small class="text-muted">{{ bill.bill_date|date:"g:i A" }}</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-4 col-6">
+                                <div class="info-box">
+                                    <h6><i class="fas fa-check-circle me-1"></i>Status</h6>
+                                    <span class="status-badge status-paid">
+                                        <i class="fas fa-check me-1"></i>Paid
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5 col-12">
+                    <div class="bill-to-section">
+                        <h5 class="mb-3 text-primary fw-bold">
+                            <i class="fas fa-user me-2"></i>BILL TO
+                        </h5>
+                        <div class="mb-2">
+                            <strong class="fs-5 text-dark">{{ bill.customer.name }}</strong>
+                        </div>
+                        {% if bill.customer.email %}
+                        <div class="mb-1">
+                            <i class="fas fa-envelope me-2 text-muted"></i>
+                            <span>{{ bill.customer.email }}</span>
+                        </div>
+                        {% endif %}
+                        {% if bill.customer.phone %}
+                        <div class="mb-1">
+                            <i class="fas fa-phone me-2 text-muted"></i>
+                            <span>{{ bill.customer.phone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if bill.customer.address %}
+                        <div class="mt-2">
+                            <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                            <span>{{ bill.customer.address|linebreaks }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="mt-3 pt-2 border-top">
+                            <small class="text-muted">
+                                <strong>Customer ID:</strong> #{{ bill.customer.pk }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="table-responsive mb-4">
+            <table class="table table-invoice">
+                <thead>
+                    <tr>
+                        <th width="60" class="text-center">#</th>
+                        <th>Item Description</th>
+                        <th class="text-center" width="80">Qty</th>
+                        <th class="text-end" width="100">Unit Price</th>
+                        <th class="text-end" width="100">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in bill_items %}
+                    <tr>
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.product.name }}</div>
+                            {% if item.product.description %}
+                            <div class="item-description">{{ item.product.description|truncatechars:100 }}</div>
+                            {% endif %}
+                            <div class="small text-muted mt-1">
+                                <strong>ID:</strong> #{{ item.product.pk }}
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold">{{ item.quantity }}</td>
+                        <td class="text-end fw-bold">${{ item.price|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <span class="amount-highlight">${{ item.total|floatformat:2 }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="fas fa-box-open fa-2x mb-2"></i>
+                            <div>No items found in this invoice</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals and Additional Information -->
+        <div class="row">
+            <div class="col-md-7 col-12">
+                <!-- Payment Terms -->
+                <div class="payment-terms">
+                    <h6 class="fw-bold mb-2">
+                        <i class="fas fa-credit-card me-2"></i>PAYMENT TERMS & CONDITIONS
+                    </h6>
+                    <ul class="small mb-0">
+                        <li><strong>Payment Due:</strong> Net 30 days from invoice date</li>
+                        <li><strong>Late Fee:</strong> 1.5% per month on overdue amounts</li>
+                        <li><strong>Accepted Methods:</strong> Bank transfer, Check, Credit Card</li>
+                        <li><strong>Currency:</strong> All amounts in USD</li>
+                    </ul>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="contact-info">
+                    <h6 class="fw-bold mb-2">
+                        <i class="fas fa-headset me-2"></i>QUESTIONS OR CONCERNS?
+                    </h6>
+                    <div class="small">
+                        <div><strong>Billing Department:</strong> billing@yourcompany.com</div>
+                        <div><strong>Phone:</strong> (555) 123-4567 ext. 101</div>
+                        <div><strong>Hours:</strong> Monday - Friday, 9:00 AM - 6:00 PM EST</div>
+                    </div>
+                </div>
+
+                <!-- Payment Information -->
+                <div class="info-box">
+                    <h6><i class="fas fa-university me-2"></i>PAYMENT INFORMATION</h6>
+                    <div class="row small">
+                        <div class="col-sm-6 col-12">
+                            <div><strong>Bank Name:</strong> First National Bank</div>
+                            <div><strong>Account Name:</strong> Your Company Name</div>
+                            <div><strong>Account Number:</strong> 1234567890</div>
+                        </div>
+                        <div class="col-sm-6 col-12">
+                            <div><strong>Routing Number:</strong> 987654321</div>
+                            <div><strong>SWIFT Code:</strong> FNBCUS33</div>
+                            <div><strong>Reference:</strong> {{ bill.bill_number }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-5 col-12">
+                <div class="totals-section">
+                    <h6 class="fw-bold mb-3 text-primary">
+                        <i class="fas fa-calculator me-2"></i>INVOICE SUMMARY
+                    </h6>
+
+                    <!-- Bill Statistics -->
+                    <div class="row text-center mb-4">
+                        <div class="col-4">
+                            <div class="h4 mb-0 text-primary">{{ bill_items.count }}</div>
+                            <small class="text-muted fw-bold">ITEMS</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 mb-0 text-success">{{ bill.tax_rate }}%</div>
+                            <small class="text-muted fw-bold">TAX RATE</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 mb-0 text-info">USD</div>
+                            <small class="text-muted fw-bold">CURRENCY</small>
+                        </div>
+                    </div>
+
+                    <!-- Totals Table -->
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-end fw-bold">Subtotal:</td>
+                                <td class="text-end fw-bold" width="120">${{ bill.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-end fw-bold">Discount:</td>
+                                <td class="text-end text-success">-$0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="text-end fw-bold">Tax ({{ bill.tax_rate }}%):</td>
+                                <td class="text-end fw-bold">${{ bill.tax_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-end fw-bold">Shipping:</td>
+                                <td class="text-end">$0.00</td>
+                            </tr>
+                            <tr class="grand-total-row">
+                                <td class="text-end">TOTAL AMOUNT DUE:</td>
+                                <td class="text-end">${{ bill.grand_total|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bill-footer">
+            <div class="row align-items-center">
+                <div class="col-md-4 col-12 text-center text-md-start">
+                    <div class="small text-muted">
+                        <div><strong>Generated:</strong> {{ bill.bill_date|date:"F d, Y \a\t g:i A" }}</div>
+                        <div><strong>Page:</strong> 1 of 1</div>
+                        <div><strong>Version:</strong> 1.0</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-12 text-center">
+                    <h4 class="text-primary mb-2">
+                        <i class="fas fa-heart text-danger me-2"></i>
+                        Thank You For Your Business!
+                    </h4>
+                    <p class="text-muted mb-0">
+                        We appreciate your trust in our services and look forward to serving you again.
+                    </p>
+                </div>
+                <div class="col-md-4 col-12 text-center text-md-end">
+                    <div class="small text-muted">
+                        <div><strong>Invoice ID:</strong> {{ bill.bill_number }}</div>
+                        <div><strong>Company:</strong> Your Company Name</div>
+                        <div><strong>Website:</strong> www.yourcompany.com</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-top">
+                <p class="small text-muted text-center mb-0">
+                    This is a computer-generated invoice and does not require a signature.
+                    For questions about this invoice, please contact us at billing@yourcompany.com or (555) 123-4567.
+                    <br><strong>Important:</strong> Please include invoice number {{ bill.bill_number }} in all
+                    correspondence.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Controls -->
+    <div class="no-print text-center">
+        <div class="d-flex flex-column flex-md-row justify-content-center gap-2">
+            <button onclick="window.print()" class="btn btn-primary btn-lg">
+                <i class="fas fa-print me-2"></i>Print Invoice
+            </button>
+            <button onclick="window.close()" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times me-2"></i>Close Window
+            </button>
+            <button onclick="downloadPDF()" class="btn btn-success btn-lg">
+                <i class="fas fa-download me-2"></i>Save as PDF
+            </button>
+        </div>
+        <div class="mt-3">
+            <small class="text-muted">
+                Use <kbd>Ctrl+P</kbd> to print or <kbd>Esc</kbd> to close
+            </small>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-print functionality (commented out by default)
+        window.onload = function () {
+            // Uncomment the next line to auto-print when page loads
+            // setTimeout(() => window.print(), 500);
+        }
+
+        // Print function
+        function printInvoice() {
+            window.print();
+        }
+
+        // Download PDF function
+        function downloadPDF() {
+            // Use browser's built-in PDF functionality
+            window.print();
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            // Ctrl+P for print
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
+
+            // Escape to close
+            if (e.key === 'Escape') {
+                window.close();
+            }
+
+            // Ctrl+S for save/print
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                window.print();
+            }
+        });
+
+        // Add print event listeners
+        window.addEventListener('beforeprint', function (e) {
+            console.log('Preparing to print...');
+            // You can add any pre-print logic here
+        });
+
+        window.addEventListener('afterprint', function (e) {
+            console.log('Print dialog closed');
+            // You can add any post-print logic here
+        });
+
+        // Responsive adjustments
+        function adjustLayout() {
+            const screenWidth = window.innerWidth;
+
+            // Adjust table on very small screens
+            if (screenWidth <= 576) {
+                const table = document.querySelector('.table-invoice');
+                if (table) {
+                    table.style.fontSize = '10px';
+                }
+            }
+        }
+
+        // Call on load and resize
+        window.addEventListener('load', adjustLayout);
+        window.addEventListener('resize', adjustLayout);
+
+        // Touch device optimizations
+        if ('ontouchstart' in window) {
+            document.addEventListener('DOMContentLoaded', function () {
+                // Add touch-friendly styles
+                const buttons = document.querySelectorAll('.btn');
+                buttons.forEach(btn => {
+                    btn.style.minHeight = '44px'; // Touch target size
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>
